@@ -2,10 +2,8 @@ import rclpy
 from rclpy.node import Node
 from std_srvs.srv import SetBool
 from mavros_msgs.msg import ActuatorControl
-# gripper
-from mavros_msgs.msg import Thrust
-# light
-from mavros_msgs.msg import Param
+# gripper and light
+from mavros_msgs.msg import Altitude
 
 
 class TEST_Wrapper(Node):
@@ -15,7 +13,8 @@ class TEST_Wrapper(Node):
         super().__init__('test_node')
         self.controller_state = True
         self.motor_pub = self.create_publisher(ActuatorControl, "/mavros/actuator_control", 10)
-        self.control_freq = 20
+        self.gripper_light_pub = self.create_publisher(Altitude, "/mavros/gripper_light_control", 10)
+        self.control_freq = 200
         self.dt = 1 / self.control_freq
         self.timer = self.create_timer(self.dt, self.callback)
         self.create_service(SetBool, "stop_signal", self.stop_callback)
@@ -24,8 +23,20 @@ class TEST_Wrapper(Node):
         
         if self.controller_state == True:
             motor = ActuatorControl()
-            motor.controls = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            motor.controls = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
             self.motor_pub.publish(motor)
+
+            gripper_light = Altitude()
+            # gripper
+            gripper_light.local = 1900.0
+            # light
+            gripper_light.relative = 1900.0            
+            self.gripper_light_pub.publish(gripper_light)
+
+            # gripper = Thrust()
+            # gripper.thrust = 1900
+            # self.gripper_pub.publish(gripper)
+            
         else:
             pass
 
