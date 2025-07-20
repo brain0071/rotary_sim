@@ -5,6 +5,8 @@ from mavros_msgs.msg import ActuatorControl
 # gripper and light
 from mavros_msgs.msg import Altitude
 from std_msgs.msg import Bool, Float32
+from geometry_msgs.msg import PoseStamped
+import numpy as np
 
 
 class TEST_Wrapper(Node):
@@ -21,12 +23,27 @@ class TEST_Wrapper(Node):
 
         self.create_subscription(Bool, '/light', self.light_callback, 10)
         self.create_subscription(Float32, '/gripper', self.gripper_callback, 10)
+        self.subscription = self.create_subscription(PoseStamped, '/target_pose', self.reference_callback, 10)
+       
+
         
         self.control_freq = 20
         self.dt = 1 / self.control_freq
         self.timer = self.create_timer(self.dt, self.control_callback)
         self.create_service(SetBool, "stop_signal", self.stop_callback)
+
+        self.ref_z = 0.0
+        self.ref_att = np.array([1.0, 0.0, 0.0, 0.0])
+        self.ref_acc = np.zeros((2,))
         
+    
+    def reference_callback(self, msg):
+        
+        self.ref_z = msg.pose.position.z
+        self.ref_att = [msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z]
+        self.ref_acc = [msg.pose.position.x, msg.pose.position.y]
+        
+
 
     
     def light_callback(self, msg):
