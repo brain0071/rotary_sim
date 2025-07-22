@@ -12,6 +12,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/rotary_controller/launch', glob('launch/*.py')),
+        ('share/' + package_name + '/config', ['config/params.yaml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -22,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'test_node = rotary_controller.test_node:main',
+            'mpc_indi_node = rotary_controller.mpc_indi_node:main',
         ],
     },
 )
