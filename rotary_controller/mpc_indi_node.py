@@ -6,7 +6,7 @@ from mavros_msgs.msg import Altitude
 from std_msgs.msg import Bool, Float32
 from geometry_msgs.msg import PoseStamped
 import numpy as np
-
+from rotary_controller.controller.ros_mpc import ROS_MPC
 
 class MPC_INDI_Wrapper(Node):
     
@@ -16,6 +16,12 @@ class MPC_INDI_Wrapper(Node):
         self.controller_state = True
         self.load_params()
         
+         # 4-DoF control {z, roll, pitch, yaw}
+        # x: {delta_z, z, qw, qx, qy, qz, p, q, r}
+        # u: {delta_vy, up, uq, ur}
+        self.q_cost = np.array([0.01, 1, 1, 0.5, 0.5, 0.5, 0.01, 0.01, 0.01])
+        self.r_cost = np.array([0.1, 0.1, 0.1, 0.1])
+
         self.dt = 1 / self.control_freq
         self.timer = self.create_timer(self.dt, self.control_callback)
 
@@ -24,16 +30,22 @@ class MPC_INDI_Wrapper(Node):
         
         self.ref_z = 0.0
         self.ref_att = np.array([1.0, 0.0, 0.0, 0.0])
-        self.ref_acc = np.zeros((2,))
 
-        self.motor_pub = self.create_publisher(ActuatorControl, "/mavros/actuator_control", 10)
-        self.gripper_light_pub = self.create_publisher(Altitude, "/mavros/gripper_light_control", 10)
-        self.create_subscription(Bool, '/light', self.light_callback, 10)
-        self.create_subscription(Float32, '/gripper', self.gripper_callback, 10)
+        self.ros_mpc = ROS_MPC(self.mass, self.inertia, self.add_mass, self.quadratic_damp, self.max_force_moment, self.max_accel,
+                 self.n_nodes, self.dt, self.q_cost, self.r_cost, self.exp_type)
+
         self.subscription = self.create_subscription(PoseStamped, '/target_pose', self.reference_callback, 10)
-        self.create_service(SetBool, "stop_signal", self.stop_callback)
-
         
+        if self.exp_type == "real":
+            self.create_subscription(Bool, '/light', self.light_callback, 10)
+            self.create_subscription(Float32, '/gripper', self.gripper_callback, 10)
+            self.motor_pub = self.create_publisher(ActuatorControl, "/mavros/actuator_control", 10)
+            self.gripper_light_pub = self.create_publisher(Altitude, "/mavros/gripper_light_control", 10)
+        else:
+            self.pose_sim_pub = self.create_publisher(PoseStamped, 'sim_pose', 10)
+
+        self.create_service(SetBool, "stop_signal", self.stop_callback)
+  
     
     def load_params(self):
         
@@ -41,7 +53,7 @@ class MPC_INDI_Wrapper(Node):
         self.declare_parameter('mass', [0.0])
         self.declare_parameter('inertia', [0.0, 0.0, 0.0])
         self.declare_parameter('add_mass', [0.0]*6)
-        self.declare_parameter('linear_damp', [0.0]*6)
+        self.declare_parameter('quadratic_damp', [0.0]*6)
         self.declare_parameter('max_force_moment', [0.0]*6)
         self.declare_parameter('max_accel', [0.0]*3)
    
@@ -50,7 +62,7 @@ class MPC_INDI_Wrapper(Node):
         self.mass = self.get_parameter('mass').value
         self.inertia = self.get_parameter('inertia').value
         self.add_mass = self.get_parameter('add_mass').value
-        self.linear_damp = self.get_parameter('linear_damp').value
+        self.quadratic_damp = self.get_parameter('quadratic_damp').value
         self.max_force_moment = self.get_parameter('max_force_moment').value
         self.max_accel = self.get_parameter('max_accel').value
 
@@ -82,13 +94,13 @@ class MPC_INDI_Wrapper(Node):
             )
     
     def reference_callback(self, msg):
-        
+
+        self.ref_z_delta = [0,]
         self.ref_z = msg.pose.position.z
+        self.ref_rate = [0, 0, 0]
         self.ref_att = [msg.pose.orientation.w, msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z]
-        self.ref_acc = [msg.pose.position.x, msg.pose.position.y]
-        
-
-
+        self.ref = np.concatenate((self.ref_z_delta, np.concatenate((self.ref_z, np.concatenate((self.ref_att, self.ref_rate))))))
+        self.ros_mpc.set_reference(self.ref)
     
     def light_callback(self, msg):
         
@@ -97,9 +109,8 @@ class MPC_INDI_Wrapper(Node):
         else:
             self.light_value = 1100.0
 
-    
     def gripper_callback(self, msg):
-        
+
         self.gripper_value = msg.data
 
 
@@ -107,19 +118,31 @@ class MPC_INDI_Wrapper(Node):
     def control_callback(self):
         
         if self.controller_state == True:
-            motor = ActuatorControl()
-            motor.controls = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
-            self.motor_pub.publish(motor)
+            # u = {delta_vz, up, uq, ur}
+            u = self.ros_mpc.optimize()
 
-            gripper_light = Altitude()
-            # gripper
-            gripper_light.local = self.gripper_value
-            # light
-            gripper_light.relative = self.light_value            
-            self.gripper_light_pub.publish(gripper_light)
+            if self.exp_type == "real":
+                motor = ActuatorControl()
+                motor.controls = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+                self.motor_pub.publish(motor)
+                gripper_light = Altitude()
+                # gripper
+                gripper_light.local = self.gripper_value
+                # light
+                gripper_light.relative = self.light_value            
+                self.gripper_light_pub.publish(gripper_light)
+            else:
+                az = u[0] / self.dt
+                self.ros_mpc.simulate(self.dt, az, u)
+
+                sim_x = self.ros_mpc.get_current_sim_state()
+                sim_pose = PoseStamped()
+                sim_pose.pose.position.z = sim_x[1]
+                sim_pose.pose.orientation.w, sim_pose.pose.orientation.x, sim_pose.pose.orientation.y, sim_pose.pose.orientation.z = sim_pose[2:6]
+                self.pose_sim_pub.publish(sim_pose)
 
         else:
-            pass
+            self.get_logger().info('The controller has been stopped.')
 
     def stop_callback(self, request, response):
         if request.data == True:
