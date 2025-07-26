@@ -7,7 +7,7 @@ from acados_template import AcadosOcp, AcadosOcpSolver, AcadosModel
 from rotary_controller.utils.utils import q_to_rot_mat, skew_symmetric
 from copy import copy
 import time
-import tf
+# import tf
 
 
 class MPC_Optimizer:
@@ -36,7 +36,7 @@ class MPC_Optimizer:
         self.u = cs.vertcat(d_vz, up, uq, ur)
 
         self.acados_ocp_solver = {}
-        self.acados_models_dir = ("/home/naodai/Workspace/rotary/rotary_ws/src/rotary_controller/acados_models")
+        self.acados_models_dir = ("/home/naodai/Workspace/rotary/ros2_ws/src/rotary_controller/acados_models")
     
         ocp = AcadosOcp()
         ocp.dims.N = self.N
@@ -70,7 +70,8 @@ class MPC_Optimizer:
         ocp.constraints.x0 = x_ref
         ocp.constraints.lbu = np.array(self.min_u)
         ocp.constraints.ubu = np.array(self.max_u)
-
+        
+        # 
         ocp.constraints.idxbu = np.array([0, 1, 2, 3])
         ocp.solver_options.tf = self.T
         ocp.solver_options.qp_solver = "FULL_CONDENSING_QPOASES"
@@ -94,16 +95,14 @@ class MPC_Optimizer:
         return cs.Function("x_next", [self.x, self.u], [x_next], ["x", "u"], ["x_next"])
     
     def dp_dynamics(self):
-        
-        # u = delta_vz (constraints: delta_max_vz = max_accel * dt)
-        
-        dvz = cs.mtimes(q_to_rot_mat(self.q)[2, 2], self.u[0] * self.robot.max_accel[2] * self.dt)
+    
+        dvz = cs.mtimes(q_to_rot_mat(self.q)[2, 2], self.u[0] * self.robot.max_vel[2])
         self.d_z = self.d_z + self.dt * dvz
         return self.d_z
 
     def p_dynamics(self):
-        
-        dvz = cs.mtimes(q_to_rot_mat(self.q)[2, 2], self.u[0] * self.robot.max_accel[2] * self.dt)
+
+        dvz = cs.mtimes(q_to_rot_mat(self.q)[2, 2], self.u[0] * self.robot.max_vel[2])
         self.z = self.z + self.d_z + self.dt * dvz
         return self.z
 
@@ -178,7 +177,7 @@ class MPC_Optimizer:
 
         self.sum_opt_time += opt_time
         self.num_opt += 1
-        u_opt_acados = np.ndarray((self.N, 6))
+        u_opt_acados = np.ndarray((self.N, 4))
 
         for i in range(self.N):
             u_opt_acados[i, :] = self.acados_ocp_solver.get(i, "u")

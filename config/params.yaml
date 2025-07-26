@@ -8,7 +8,7 @@ mpc_indi_node:
     quadratic_damp: [5.1, 36.7, 36.7, 0.0, 1.7, 8.8]
     max_force_moment: [158.4276, 158.4276, 158.4276, 54.6344, 59.6087, 57.6819]
     # todo
-    max_accel: [2.0, 2.0, 2.0]
+    max_vel: [2.0, 2.0, 2.0]
     
     # MPC
     control_freq: 20

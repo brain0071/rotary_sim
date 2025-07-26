@@ -2,7 +2,7 @@
 import casadi as cs
 import numpy as np
 import pyquaternion
-import tf
+# import tf
 
 
 def unit_quat(q):
@@ -29,11 +29,11 @@ def euler_to_quaternion(roll, pitch, yaw):
     return np.array([qw, qx, qy, qz])
 
 #naodai
-def quaternion_to_euler(qw, qx, qy, qz):
+# def quaternion_to_euler(qw, qx, qy, qz):
     
-    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion([qx, qy, qz, qw])
+#     (roll, pitch, yaw) = tf.transformations.euler_from_quaternion([qx, qy, qz, qw])
     
-    return np.array([roll, pitch, yaw])
+#     return np.array([roll, pitch, yaw])
 
 def q_dot_q(q, r):
     """

@@ -4,10 +4,10 @@ from rotary_controller.controller.robot import ROBOT
 
 class ROS_MPC:
 
-    def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_accel,
+    def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_vel,
                  n_nodes, dt, q_cost, r_cost, exp_type):
        
-        self.robot = ROBOT(mass, inertia, add_mass, quadratic_damp,  max_force_moment, max_accel)   
+        self.robot = ROBOT(mass, inertia, add_mass, quadratic_damp,  max_force_moment, max_vel)   
         self.mpc = MPC(self.robot, dt, n_nodes, q_cost, r_cost, exp_type)
         
     def set_pos(self, z):

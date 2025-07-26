@@ -1,33 +1,33 @@
 #
 import numpy as np
-from ocean_mpc.utils.utils import q_to_rot_mat, skew_symmetric, unit_quat
+from rotary_controller.utils.utils import q_to_rot_mat, skew_symmetric, unit_quat
 import math
-import tf
+# import tf
 
 
 class ROBOT:
     
-    def __init__(self, mass, inertia, add_mass, quadratic_damp,  max_force_moment, max_accel):
+    def __init__(self, mass, inertia, add_mass, quadratic_damp,  max_force_moment, max_vel):
         
         self.mass = mass 
         self.inertia = inertia
         self.add_mass = add_mass
         self.quadratic_damp = quadratic_damp
         self.max_force_moment = max_force_moment
-        self.max_accel = max_accel
+        self.max_vel = max_vel
 
-        self.real_z_delta = 0
-        self.real_z = 0
+        self.real_z_delta = 0.0
+        self.real_z = 0.0
         self.real_att = np.array([1.0, 0.0, 0.0, 0.0])  # Quaternion format: qw, qx, qy, qz
         self.real_rate = np.zeros((3,))
         
-        self.sim_z_delta = 0
-        self.sim_z = 0
+        self.sim_z_delta = 0.0
+        self.sim_z = 0.0
         self.sim_att = np.array([1.0, 0.0, 0.0, 0.0])  
         self.sim_rate = np.zeros((3,))
         
-        self.sim_vz = 0
-        self.sim_z_last = 0
+        self.sim_vz = 0.0
+        self.sim_z_last = 0.0
     
     def set_pos(self, z):
         self.real_z = z
@@ -46,17 +46,21 @@ class ROBOT:
         return x_real
 
     def get_sim_state(self):
-        x_sim = np.concatenate((self.sim_z_delta, np.concatenate((self.sim_z, np.concatenate((self.sim_att, self.sim_rate))))))
+    
+        x_sim = np.concatenate((np.array([self.sim_z_delta]), np.concatenate((np.array([self.sim_z]), np.concatenate((self.sim_att, self.sim_rate))))))
         return x_sim
 
     def p_dynamics(self, x):
-        return np.dot(q_to_rot_mat(x[1:5])[2, 2], x[5]) 
-
+        val = np.dot(
+        np.asarray(q_to_rot_mat(x[1:5])[2, 2]).item(), 
+        np.asarray(x[5]).item())
+        return np.array([val])
+    
     def q_dynamics(self, x):
         return 1 / 2 * np.dot(skew_symmetric(x[6:9]), x[1:5])
     
     def v_dynamics(self, az):
-        return az
+        return np.array([az])
         
     def r_dynamics(self, x, u):
 
@@ -72,13 +76,15 @@ class ROBOT:
         x_sim = self.get_sim_state()
         # x_sim: {delta_z, z, qw, qx, qy, qz, p, q, r}
         # x: {z, qw, qx, qy, qz, vz, p, q, r}
-        x = np.concatenate((x_sim[1:6], np.concatenate((self.sim_vz, x_sim[6:9]))))
+        x = np.concatenate((x_sim[1:6], np.concatenate((np.array([self.sim_vz]), x_sim[6:9]))))
         
         # RK4 integration
         k1 = np.concatenate((self.p_dynamics(x), self.q_dynamics(x),
                              np.concatenate((self.v_dynamics(az), self.r_dynamics(x, u)))))
 
         x_aux = [x[i] + dt / 2 * k1[i] for i in range(9)]
+        
+        
         k2 = np.concatenate((self.p_dynamics(x_aux), self.q_dynamics(x_aux), 
                              np.concatenate((self.v_dynamics(az), self.r_dynamics(x_aux, u)))))
         
