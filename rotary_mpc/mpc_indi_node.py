@@ -6,7 +6,7 @@ from mavros_msgs.msg import Altitude
 from std_msgs.msg import Bool, Float32, Float32MultiArray
 from geometry_msgs.msg import PoseStamped
 import numpy as np
-from rotary_controller.controller.ros_mpc import ROS_MPC
+from rotary_mpc.controller.ros_mpc import ROS_MPC
 
 class MPC_INDI_Wrapper(Node):
     

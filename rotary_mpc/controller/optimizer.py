@@ -4,7 +4,7 @@ import sys
 
 import casadi as cs
 from acados_template import AcadosOcp, AcadosOcpSolver, AcadosModel
-from rotary_controller.utils.utils import q_to_rot_mat, skew_symmetric
+from rotary_mpc.utils.utils import q_to_rot_mat, skew_symmetric
 from copy import copy
 import time
 # import tf
@@ -36,7 +36,7 @@ class MPC_Optimizer:
         self.u = cs.vertcat(d_vz, up, uq, ur)
 
         self.acados_ocp_solver = {}
-        self.acados_models_dir = ("/home/naodai/Workspace/rotary/ros2_ws/src/rotary_controller/acados_models")
+        self.acados_models_dir = ("/home/naodai/Workspace/rotary/ros2_ws/src/rotary_mpc/acados_models")
     
         ocp = AcadosOcp()
         ocp.dims.N = self.N

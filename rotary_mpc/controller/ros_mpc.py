@@ -1,6 +1,6 @@
 import numpy as np
-from rotary_controller.controller.mpc import MPC
-from rotary_controller.controller.robot import ROBOT
+from rotary_mpc.controller.mpc import MPC
+from rotary_mpc.controller.robot import ROBOT
 
 class ROS_MPC:
 

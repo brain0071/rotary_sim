@@ -6,7 +6,7 @@ def generate_launch_description():
     
     return LaunchDescription([
         Node(
-            package='rotary_controller',
+            package='rotary_mpc',
             executable='mpc_indi_node',
             name='mpc_indi_node',
             output='screen',

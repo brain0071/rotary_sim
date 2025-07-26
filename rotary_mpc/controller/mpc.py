@@ -1,6 +1,6 @@
 
 import numpy as np
-from rotary_controller.controller.optimizer import MPC_Optimizer
+from rotary_mpc.controller.optimizer import MPC_Optimizer
 
 class MPC:
     

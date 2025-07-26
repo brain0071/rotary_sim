@@ -1,7 +1,7 @@
 from setuptools import find_packages, setup
 from glob import glob
 
-package_name = 'rotary_controller'
+package_name = 'rotary_mpc'
 
 setup(
     name=package_name,
@@ -11,7 +11,7 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/rotary_controller/launch', glob('launch/*.py')),
+        ('share/rotary_mpc/launch', glob('launch/*.py')),
         ('share/' + package_name + '/config', ['config/params.yaml']),
     ],
     install_requires=['setuptools'],
@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mpc_indi_node = rotary_controller.mpc_indi_node:main',
+            'mpc_indi_node = rotary_mpc.mpc_indi_node:main',
         ],
     },
 )

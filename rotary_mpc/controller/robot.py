@@ -1,6 +1,6 @@
 #
 import numpy as np
-from rotary_controller.utils.utils import q_to_rot_mat, skew_symmetric, unit_quat
+from rotary_mpc.utils.utils import q_to_rot_mat, skew_symmetric, unit_quat
 import math
 # import tf
 
