@@ -14,4 +14,4 @@ mpc_indi_node:
     control_freq: 20
     t_horizon: 0.5
     n_nodes: 5
-    exp_type: sim
+    exp_type: real

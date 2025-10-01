@@ -122,12 +122,12 @@ class MPC_INDI_Wrapper(Node):
         if self.controller_state == True:
             print("Hello World.")
             # u = {delta_vz, up, uq, ur}
-            u = self.ros_mpc.optimize()
+            # u = self.ros_mpc.optimize()
             # EKF
             
-            msg = Float32MultiArray()
-            msg.data = [u[0], u[1], u[2], u[3]]  
-            self.control_pub.publish(msg)
+            # msg = Float32MultiArray()
+            # msg.data = [u[0], u[1], u[2], u[3]]  
+            # self.control_pub.publish(msg)
             
             if self.exp_type == "real":
                 motor = ActuatorControl()
