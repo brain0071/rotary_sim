@@ -21,13 +21,6 @@ def generate_launch_description():
             output='screen',
             emulate_tty=True,
         ),
-        Node(
-            package='ocean_data',
-            executable='log_data',  
-            name='log_data',
-            output='screen',
-            emulate_tty=True,
-        ),
         
     ])
 

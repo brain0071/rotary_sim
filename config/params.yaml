@@ -1,22 +1,21 @@
 mpc_node:
   ros__parameters:  
     # Model
-    # motor_max: [3.5] 
-    # mass: [35.65]
-    # inertia: [1.19, 1.03, 0.61]
-    # add_mass: [7.8, 36.8, 36.8, 0.0, 2.3, 2.3]   
-    # quadratic_damp: [5.1, 36.7, 36.7, 0.0, 1.7, 8.8]
-    # max_force_moment: [158.4276, 158.4276, 158.4276, 54.6344, 59.6087, 57.6819]
+    motor_max: [3.5] 
+    mass: [35.65]
+    inertia: [1.19, 1.03, 0.61]
+    add_mass: [7.8, 36.8, 36.8, 0.0, 2.3, 2.3]   
+    quadratic_damp: [5.1, 36.7, 36.7, 0.0, 1.7, 8.8]
+    max_force_moment: [158.4276, 158.4276, 158.4276, 54.6344, 59.6087, 57.6819]
+    max_acceleration: 0.5 # m/s/s
+    max_angular_velocity: 0.5 # rad/s 
     
-    motor_max: [272.0] 
-    mass: [4200.0]
-    inertia: [3364.0, 5912.0, 5075.0]
-    add_mass: [420.0, 420.0, 420.0, 336.0, 591.0, 507.0]   
-    quadratic_damp: [2327.0, 4042.0, 3135.0, 2829.0, 8535.0, 11000.0]
-    max_force_moment: [7538.0, 7538.0, 9233.0, 8529.0, 8529.0, 11728.0]
+    
   
     # MPC
-    control_freq: 20
-    t_horizon: 0.1
-    n_nodes: 20
+    kinematics_control_freq: 20
+    kinematics_n_nodes: 10
+
+    dynamics_control_freq: 100
+    dynamics_n_nodes: 10
    
