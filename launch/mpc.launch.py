@@ -14,6 +14,7 @@ def generate_launch_description():
             parameters=[os.path.join(
                 os.path.dirname(__file__), '../config/params.yaml')],
         ),
+        
         Node(
             package='reference',
             executable='reference_node',
@@ -21,13 +22,14 @@ def generate_launch_description():
             output='screen',
             emulate_tty=True,
         ),
-        Node(
-            package='ocean_data',
-            executable='log_data',  
-            name='log_data',
-            output='screen',
-            emulate_tty=True,
-        ),
+        
+        # Node(
+        #     package='ocean_data',
+        #     executable='log_data',  
+        #     name='log_data',
+        #     output='screen',
+        #     emulate_tty=True,
+        # ),
         
     ])
 
