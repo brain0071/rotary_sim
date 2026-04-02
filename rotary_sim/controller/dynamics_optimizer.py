@@ -12,33 +12,30 @@ import time
 
 class MPC_Dynamics_Optimizer:
 
-    def __init__(self, robot, dynamics_n_nodes, dynamics_q_cost, dynamics_r_cost, dynamics_dt):
+    def __init__(self, robot, dynamics_n_nodes, dynamics_q_cost, dynamics_r_cost, dynamics_t_horizon):
         
         self.robot = robot
-        self.max_du_u = np.array([0.3, 0.3, 0.3, 0.6, 0.6, 0.6])
-        self.min_du_u = np.array([-0.3, -0.3, -0.3, -0.6, -0.6, -0.6])
-        self.max_u = np.array([0.6, 0.6, 0.6])
-        self.min_u = np.array([-0.6, -0.6, -0.6])
-        self.N = dynamics_n_nodes
-        self.T = self.N * dynamics_dt
-        self.dt = dynamics_dt
-        
-        # du dv dw p q r uu uv uw
-        self.dv = cs.MX.sym("dv", 3)
-        self.r = cs.MX.sym("r", 3)
-        self.u_x = cs.MX.sym("u_x", 3)
-        self.x = cs.vertcat(self.dv, self.r, self.u_x)
+        self.max_u = np.array([0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
+        self.min_u = np.array([-0.6, -0.6, -0.6, -0.6, -0.6, -0.6])
 
-        duu = cs.MX.sym("duu")
-        duv = cs.MX.sym("duv")
-        duw = cs.MX.sym("duw")
+        self.N = dynamics_n_nodes
+        self.T = dynamics_t_horizon
+        
+        # u v w p q r
+        self.v = cs.MX.sym("v", 3)
+        self.r = cs.MX.sym("r", 3)
+        self.x = cs.vertcat(self.v, self.r)
+
+        uu = cs.MX.sym("uu")
+        uv = cs.MX.sym("uv")
+        uw = cs.MX.sym("uw")
         up = cs.MX.sym("up")
         uq = cs.MX.sym("uq")
         ur = cs.MX.sym("ur")
-        self.u = cs.vertcat(duu, duv, duw, up, uq, ur)
+        self.u = cs.vertcat(uu, uv, uw, up, uq, ur)
 
         self.acados_ocp_solver = {}
-        self.acados_models_dir = ("/home/naodai/Workspace/rotary/ros2_ws/src/rotary_sim/acados_models")
+        self.acados_models_dir = ("/home/naodai/Workspace/rotary/sim_ws/src/rotary_sim/acados_models")
     
         ocp = AcadosOcp()
         ocp.dims.N = self.N
@@ -50,16 +47,16 @@ class MPC_Dynamics_Optimizer:
 
         self.standard_dynamics = self.robot_dynamics()
         self.model_name = "dynamics"
-        stand_acados_model = self.acados_setup_model(self.standard_dynamics(x=self.x, u=self.u)["x_next"], self.model_name)
+        stand_acados_model = self.acados_setup_model(self.standard_dynamics(x=self.x, u=self.u)["x_dot"], self.model_name)
 
         ocp.model = stand_acados_model
         nx = stand_acados_model.x.size()[0]
         nu = stand_acados_model.u.size()[0]
 
         ny = nx + nu
-        x_ref = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
-        y_ref = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        y_ref_e = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
+        x_ref = np.array([0, 0, 0, 0, 0, 0])
+        y_ref = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        y_ref_e = np.array([0, 0, 0, 0, 0, 0])
         ocp.cost.yref = y_ref
         ocp.cost.yref_e = y_ref_e
         
@@ -70,19 +67,14 @@ class MPC_Dynamics_Optimizer:
         ocp.cost.Vx_e = np.eye(nx)
         
         ocp.constraints.x0 = x_ref
-        ocp.constraints.lbu = np.array(self.min_du_u)
-        ocp.constraints.ubu = np.array(self.max_du_u)
+        ocp.constraints.lbu = np.array(self.min_u)
+        ocp.constraints.ubu = np.array(self.max_u)
         ocp.constraints.idxbu = np.array([0, 1, 2, 3, 4, 5])
-        
-        # state constraints
-        ocp.constraints.idxbx = np.array([6, 7, 8])  
-        ocp.constraints.lbx = np.array(self.min_u)
-        ocp.constraints.ubx = np.array(self.max_u)
         
         ocp.solver_options.tf = self.T
         ocp.solver_options.qp_solver = "FULL_CONDENSING_QPOASES"
         ocp.solver_options.hessian_approx = "GAUSS_NEWTON"
-        ocp.solver_options.integrator_type = "DISCRETE"
+        ocp.solver_options.integrator_type = "ERK"
         ocp.solver_options.print_level = 0
         ocp.solver_options.nlp_solver_type = "SQP"
         ocp.solver_options.nlp_solver_max_iter = 50
@@ -97,36 +89,36 @@ class MPC_Dynamics_Optimizer:
 
     def robot_dynamics(self):
 
-        x_next = cs.vertcat(self.dv_dynamics(), self.r_dynamics(), self.u_x_dynamics())
-        return cs.Function("x_next", [self.x, self.u], [x_next], ["x", "u"], ["x_next"])
+        x_dot = cs.vertcat(self.dv_dynamics(), self.r_dynamics(), self.u_x_dynamics())
+        return cs.Function("x_dot", [self.x, self.u], [x_dot], ["x", "u"], ["x_dot"])
     
-    def dv_dynamics(self):
-        # u_x[0] = u_x[0] + u[0] 
-       
-        self.dv[0] = (self.robot.max_force_moment[0] * (self.u[0] + self.u_x[0])) / (self.robot.mass[0] + self.robot.add_mass[0])
-        self.dv[1] = (self.robot.max_force_moment[1] * (self.u[1] + self.u_x[1])) / (self.robot.mass[0] + self.robot.add_mass[1])
-        self.dv[2] = (self.robot.max_force_moment[2] * (self.u[2] + self.u_x[2])) / (self.robot.mass[0] + self.robot.add_mass[2])
-        return self.dv
+    def v_dynamics(self):
+        dot_u = (self.robot.max_force_moment[0] * self.u[0] - (self.robot.quadratic_damp[0] * cs.fabs(self.v[0]) * self.v[0])) / (self.robot.mass[0] + self.robot.add_mass[0])
+        dot_v = (self.robot.max_force_moment[1] * self.u[1] - (self.robot.quadratic_damp[1] * cs.fabs(self.v[1]) * self.v[1])) / (self.robot.mass[0] + self.robot.add_mass[1])
+        dot_w = (self.robot.max_force_moment[2] * self.u[2] - (self.robot.quadratic_damp[2] * cs.fabs(self.v[2]) * self.v[2])) / (self.robot.mass[0] + self.robot.add_mass[2])
+
+        return cs.vertcat(dot_u, dot_v, dot_w)
+    
 
     def r_dynamics(self):
         
-        self.r[0] = self.r[0] + ((self.u[3] * self.robot.max_force_moment[3] - (self.robot.quadratic_damp[3] * cs.fabs(self.r[0]) * self.r[0])) / (self.robot.inertia[0] + self.robot.add_mass[3])) * self.dt
-        self.r[1] = self.r[1] + ((self.u[4] * self.robot.max_force_moment[4] - (self.robot.quadratic_damp[4] * cs.fabs(self.r[1]) * self.r[1])) / (self.robot.inertia[1] + self.robot.add_mass[4])) * self.dt
-        self.r[2] = self.r[2] + ((self.u[5] * self.robot.max_force_moment[5] - (self.robot.quadratic_damp[5] * cs.fabs(self.r[2]) * self.r[2])) / (self.robot.inertia[2] + self.robot.add_mass[5])) * self.dt
-        return self.r
+        dot_p = (self.robot.max_force_moment[3] * self.u[3] - (self.robot.quadratic_damp[3] * cs.fabs(self.r[0]) * self.r[0])) / (self.robot.inertia[0] + self.robot.add_mass[3])
+        dot_q = (self.robot.max_force_moment[4] * self.u[4] - (self.robot.quadratic_damp[4] * cs.fabs(self.r[1]) * self.r[1])) / (self.robot.inertia[1] + self.robot.add_mass[4])
+        dot_r = (self.robot.max_force_moment[5] * self.u[5] - (self.robot.quadratic_damp[5] * cs.fabs(self.r[2]) * self.r[2])) / (self.robot.inertia[2] + self.robot.add_mass[5])
 
-    def u_x_dynamics(self):
-        self.u_x[0] = self.u[0] + self.u_x[0] 
-        self.u_x[1] = self.u[1] + self.u_x[1] 
-        self.u_x[2] = self.u[2] + self.u_x[2] 
-        return self.u_x
+        return cs.vertcat(dot_p, dot_q, dot_r)
+
 
     def acados_setup_model(self, dynamics, model_name):
 
         def fill_in_acados_model(x, u, p, dynamics, name):
+            x_dot = cs.MX.sym("x_dot", dynamics.shape)
+            f_impl = x_dot - dynamics
             model = AcadosModel()
-            model.disc_dyn_expr = dynamics 
+            model.f_expl_expr = dynamics
+            model.f_impl_expr = f_impl
             model.x = x
+            model.xdot = x_dot
             model.u = u
             model.p = p
             model.name = name
@@ -143,10 +135,8 @@ class MPC_Dynamics_Optimizer:
         ref_u = np.array([0, 0, 0, 0, 0, 0])
         ref = np.concatenate((target, ref_u), axis=0)
         for j in range(self.N):
-            # {x y z qw qx qy qz uu uv uw up uq ur}
             self.acados_ocp_solver.cost_set(j, "yref", ref)
-
-        # {x y z qw qx qy qz}
+            
         self.acados_ocp_solver.cost_set(self.N, "yref", target)
 
     def run_optimize(self, initial_state):

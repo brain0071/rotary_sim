@@ -4,14 +4,14 @@ from rotary_sim.controller.robot import ROBOT
 
 class ROS_MPC:
 
-    def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_acceleration, max_angular_velocity, 
-                 kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_dt, dynamics_n_nodes, dynamics_q_cost, 
-                 dynamics_r_cost, dynamics_dt):
+    def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_velocity, max_angular_velocity, 
+                 kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, dynamics_n_nodes, dynamics_q_cost, 
+                 dynamics_r_cost, dynamics_t_horizon):
        
-        self.robot = ROBOT(mass, inertia, add_mass, quadratic_damp, max_force_moment, max_acceleration, max_angular_velocity)
-
-        self.mpc = MPC(self.robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_dt, dynamics_n_nodes, 
-                       dynamics_q_cost, dynamics_r_cost, dynamics_dt)
+        self.robot = ROBOT(mass, inertia, add_mass, quadratic_damp, max_force_moment, max_velocity, max_angular_velocity)
+        
+        self.mpc = MPC(self.robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, dynamics_n_nodes, 
+                       dynamics_q_cost, dynamics_r_cost, dynamics_t_horizon)
         
    
 
@@ -26,8 +26,7 @@ class ROS_MPC:
     def kinematics_simulate(self, kinematics_dt, kinematics_opt_u):
         self.mpc.kinematics_simulate(kinematics_dt, kinematics_opt_u)
 
-    
-    
+
     def get_kinematics_sim_state(self):
         return self.mpc.get_sim_kinematics_state()
     

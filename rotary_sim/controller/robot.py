@@ -5,30 +5,27 @@ import math
 
 class ROBOT:
     
-    def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_acceleration, max_angular_velocity):
+    def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_velocity, max_angular_velocity):
         
         self.mass = mass
         self.inertia = inertia
         self.add_mass = add_mass
         self.quadratic_damp = quadratic_damp
         self.max_force_moment = max_force_moment
-        self.max_acceleration = max_acceleration 
+        self.max_acceleration = max_velocity 
         self.max_angular_velocity = max_angular_velocity
 
-        self.sim_pos_delta = np.zeros((3,))
         self.sim_pos = np.zeros((3,))
         self.sim_att = np.array([1.0, 0.0, 0.0, 0.0])  
-        self.sim_accel = np.zeros((3,))
+        self.sim_vel = np.zeros((3,))
         self.sim_rate = np.zeros((3,))
-        self.u_x = np.zeros((3,))
-        self.sim_pos_last = np.zeros((3,))
     
     def get_sim_kinematics_state(self):
-        x_sim = np.concatenate((self.sim_pos_delta, np.concatenate((self.sim_pos, self.sim_att))))
+        x_sim = np.concatenate((self.sim_pos, self.sim_att))
         return x_sim
     
     def get_sim_dynamics_state(self):
-        x_sim = np.concatenate((self.sim_accel, np.concatenate((self.sim_rate, self.u_x))))
+        x_sim = np.concatenate((self.sim_vel, self.sim_rate))
         return x_sim
 
     def p_kinematics(self, x, velocity):
@@ -39,10 +36,8 @@ class ROBOT:
 
     def kinematics_update(self, dt, kinematics_opt_u):
         
-        # delta_x delta_y delta_z x y z qw qx qy qz
-        x_sim = self.get_sim_kinematics_state()
         # x y z qw qx qy qz
-        x = x_sim[3:10]
+        x = self.get_sim_kinematics_state()
         
         k1 = np.concatenate((self.p_kinematics(x, kinematics_opt_u[0:3]), self.q_kinematics(x, kinematics_opt_u[3:6])))
         x_aux = [x[i] + dt / 2 * k1[i] for i in range(7)]
@@ -53,13 +48,10 @@ class ROBOT:
         x_aux = [x[i] + dt / 2 * k3[i] for i in range(7)]
         k4 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
         x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(7)]
-  
-        self.sim_pos_delta = [x[0] - self.sim_pos_last[0], x[1] - self.sim_pos_last[1], x[2] - self.sim_pos_last[2]]
+
         self.sim_pos = x[0:3]
         self.sim_att = x[3:7]
-        # 
-        self.att = self.sim_att
-        self.sim_pos_last = x[0:3]
+        
         
 
     def v_dynamics(self, u):
@@ -78,26 +70,24 @@ class ROBOT:
         
     def dynamics_update(self, dt, dynamics_opt_u):
         
-        # du dv dw p q r uu uv uw
-        x_sim = self.get_sim_dynamics_state()
-        # p q r
-        x = x_sim[3:6]
+        x = self.get_sim_dynamics_state()
         
-        k1 = self.r_dynamics(x, dynamics_opt_u[3:6])
-        x_aux = [x[i] + dt / 2 * k1[i] for i in range(3)]
+        k1 = np.concatenate((self.p_kinematics(x, dynamics_opt_u[0:3]), self.q_kinematics(x, dynamics_opt_u[3:6])))
+        x_aux = [x[i] + dt / 2 * k1[i] for i in range(6)]
+        k2 = np.concatenate((self.p_kinematics(x_aux, dynamics_opt_u[0:3]), self.q_kinematics(x_aux, dynamics_opt_u[3:6])))
+        x_aux = [x[i] + dt / 2 * k2[i] for i in range(6)]
 
-        k2 = self.r_dynamics(x_aux, dynamics_opt_u[3:6])
-        x_aux = [x[i] + dt / 2 * k2[i] for i in range(3)]
+        k3 = np.concatenate((self.p_kinematics(x_aux, dynamics_opt_u[0:3]), self.q_kinematics(x_aux, dynamics_opt_u[3:6])))
+        x_aux = [x[i] + dt / 2 * k3[i] for i in range(6)]
+        k4 = np.concatenate((self.p_kinematics(x_aux, dynamics_opt_u[0:3]), self.q_kinematics(x_aux, dynamics_opt_u[3:6])))
+        x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(7)]
 
-        k3 = self.r_dynamics(x_aux, dynamics_opt_u[3:6])
-        x_aux = [x[i] + dt / 2 * k3[i] for i in range(3)]
-
-        k4 = self.r_dynamics(x_aux, dynamics_opt_u[3:6])
-        x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(3)]
-
-        self.sim_accel = self.v_dynamics(dynamics_opt_u[0:3])
-        self.sim_rate = x
-        self.u_x = dynamics_opt_u[0:3]
-
+        self.sim_vel = x[0:3]
+        self.sim_rate = x[3:6]
+        
+        
+        
+        
+  
         
 
