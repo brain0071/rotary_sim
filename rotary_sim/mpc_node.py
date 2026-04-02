@@ -22,7 +22,7 @@ class Rotary_Cascaded_MPCWrapper(Node):
         self.kinematics_r_cost = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         
         # {u v w p q r}
-        self.dynamics_q_cost = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        self.dynamics_q_cost = np.array([1, 1, 1, 1, 1, 1])
         # {uu uv uw up uq ur}
         self.dynamics_r_cost = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
 
@@ -60,7 +60,7 @@ class Rotary_Cascaded_MPCWrapper(Node):
         self.declare_parameter('add_mass', [0.0]*6)
         self.declare_parameter('quadratic_damp', [0.0]*6)
         self.declare_parameter('max_force_moment', [0.0]*6)
-        self.declare_parameter('max_acceleration', 0.5)
+        self.declare_parameter('max_velocity', 0.5)
         self.declare_parameter('max_angular_velocity', 0.5)     
    
         # Read parameters
@@ -110,10 +110,9 @@ class Rotary_Cascaded_MPCWrapper(Node):
     
     def reference_callback(self, msg):
 
-        self.ref_pos_delta = [0, 0, 0]
         self.ref_pos = [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z,]
         self.ref_att = [msg.pose.pose.orientation.w, msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z,]
-        self.ref = np.concatenate((self.ref_pos_delta, np.concatenate((self.ref_pos, self.ref_att))))
+        self.ref = np.concatenate((self.ref_pos, self.ref_att))
         self.ros_mpc.set_kinematics_reference(self.ref)
     
     def run_kinematics_MPC(self):
@@ -134,7 +133,7 @@ class Rotary_Cascaded_MPCWrapper(Node):
             sim_cur_state = self.ros_mpc.get_kinematics_sim_state()
             sim_cur_p = PoseStamped()
             sim_cur_p.pose.position.x, sim_cur_p.pose.position.y, sim_cur_p.pose.position.z = sim_cur_state[0:3]
-            sim_cur_p.pose.orientation.w, sim_cur_p.pose.orientation.x, sim_cur_p.pose.orientation.y, sim_cur_p.pose.orientation.z = sim_cur_state[3:6]
+            sim_cur_p.pose.orientation.w, sim_cur_p.pose.orientation.x, sim_cur_p.pose.orientation.y, sim_cur_p.pose.orientation.z = sim_cur_state[3:7]
             self.pose_sim_pub.publish(sim_cur_p)
 
 
@@ -154,8 +153,7 @@ class Rotary_Cascaded_MPCWrapper(Node):
             self.ros_mpc.dynamics_simulate(self.dynamics_dt, self.dynamics_u)
             sim_cur_state = self.ros_mpc.get_dynamics_sim_state()
         
-            self.sim_v[:3] += sim_cur_state[0:3] 
-            self.sim_v[3:6] = sim_cur_state[3:6]
+            self.sim_v = sim_cur_state
             
             velocity_msg = TwistStamped()
             velocity_msg.header.stamp = self.get_clock().now().to_msg()  

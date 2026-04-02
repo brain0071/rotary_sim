@@ -7,7 +7,7 @@ mpc_node:
     add_mass: [7.8, 36.8, 36.8, 0.0, 2.3, 2.3]   
     quadratic_damp: [5.1, 36.7, 36.7, 0.0, 1.7, 8.8]
     max_force_moment: [158.4276, 158.4276, 158.4276, 54.6344, 59.6087, 57.6819]
-    max_acceleration: 0.5 # m/s/s
+    max_velocity: 5.0 # m/s/s
     max_angular_velocity: 0.5 # rad/s 
     
     
@@ -15,7 +15,10 @@ mpc_node:
     # MPC
     kinematics_control_freq: 20
     kinematics_n_nodes: 10
+    kinematics_t_horizon: 0.1
+
 
     dynamics_control_freq: 100
     dynamics_n_nodes: 10
+    dynamics_t_horizon: 0.1
    

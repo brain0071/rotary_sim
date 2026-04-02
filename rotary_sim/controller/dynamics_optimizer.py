@@ -89,7 +89,7 @@ class MPC_Dynamics_Optimizer:
 
     def robot_dynamics(self):
 
-        x_dot = cs.vertcat(self.dv_dynamics(), self.r_dynamics(), self.u_x_dynamics())
+        x_dot = cs.vertcat(self.v_dynamics(), self.r_dynamics())
         return cs.Function("x_dot", [self.x, self.u], [x_dot], ["x", "u"], ["x_dot"])
     
     def v_dynamics(self):
