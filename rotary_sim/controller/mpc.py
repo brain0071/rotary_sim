@@ -32,8 +32,10 @@ class MPC:
         return self.robot.get_sim_dynamics_state()
     
     def set_dynamics_reference(self, ref):
-        return self.dynamics_opt.set_reference_state(ref)
-       
+        # return self.dynamics_opt.set_reference_state(ref)
+        ref = np.array(ref)
+        max_vel = np.array(self.robot.max_velocity)
+        return self.dynamics_opt.set_reference_state(ref * max_vel)       
     
     def dynamics_optimize(self):   
         robot_dynamics_state = self.get_sim_dynamics_state()
