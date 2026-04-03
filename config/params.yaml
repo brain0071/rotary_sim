@@ -17,4 +17,6 @@ mpc_node:
     kinematics_n_nodes: 10
     kinematics_t_horizon: 0.1
 
+    dynamics_control_freq: 100
+
 

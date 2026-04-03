@@ -10,7 +10,7 @@ import time
 
 class FF_PI_Dynamics:
 
-    def __init__(self, robot, k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int_min, vel_err_int_max, dynamics_dt):
+    def __init__(self, robot, k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int, vel_err_int_min, vel_err_int_max, dynamics_dt):
         
         
         self.robot = robot
@@ -18,12 +18,13 @@ class FF_PI_Dynamics:
         self.acc_ref_max = acc_ref_max
         self.kp_pi = kp_pi
         self.ki_pi = ki_pi
+        self.vel_err_int = vel_err_int
         self.vel_err_int_min = vel_err_int_min
         self.vel_err_int_max = vel_err_int_max
         self.dynamics_dt = dynamics_dt
         
-        self.max_u = np.array([0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
-        self.min_u = np.array([-0.6, -0.6, -0.6, -0.6, -0.6, -0.6])
+        self.u_max = np.array([0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
+        self.u_min = np.array([-0.6, -0.6, -0.6, -0.6, -0.6, -0.6])
         self.vel_ref = np.zeros(6, dtype=float)
    
     def get_effective_inertia_terms(self):

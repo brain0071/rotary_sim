@@ -6,10 +6,11 @@ class ROS_MPC:
 
     def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_velocity, max_angular_velocity, 
                  kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon,
-                 k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int_min, vel_err_int_max, dynamics_dt):
+                 k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int, vel_err_int_min, vel_err_int_max, dynamics_dt):
        
         self.robot = ROBOT(mass, inertia, add_mass, quadratic_damp, max_force_moment, max_velocity, max_angular_velocity)
-        self.mpc = MPC(self.robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int_min, vel_err_int_max, dynamics_dt)
+        self.mpc = MPC(self.robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, 
+                       k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int, vel_err_int_min, vel_err_int_max, dynamics_dt)
         
 
     # kinematics

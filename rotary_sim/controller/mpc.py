@@ -4,11 +4,12 @@ from rotary_sim.controller.dynamics_optimizer import FF_PI_Dynamics
 
 class MPC:
 
-    def __init__(self, robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int_min, vel_err_int_max, dynamics_dt):
+    def __init__(self, robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, 
+                 k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int, vel_err_int_min, vel_err_int_max, dynamics_dt):
         
         self.robot = robot
         self.kinematics_opt = MPC_Kinematics_Optimizer(robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon)
-        self.dynamics_opt = FF_PI_Dynamics(robot, k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int_min, vel_err_int_max, dynamics_dt)
+        self.dynamics_opt = FF_PI_Dynamics(robot, k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int, vel_err_int_min, vel_err_int_max, dynamics_dt)
             
             
     def get_sim_kinematics_state(self):
@@ -31,7 +32,9 @@ class MPC:
         return self.robot.get_sim_dynamics_state()
     
     def set_dynamics_reference(self, ref):
-        return self.dynamics_opt.set_reference_state(ref)
+        ref = np.array(ref)
+        max_vel = np.array(self.robot.max_velocity)
+        return self.dynamics_opt.set_reference_state(ref * max_vel)
        
     def dynamics_optimize(self):   
         robot_dynamics_state = self.get_sim_dynamics_state()
