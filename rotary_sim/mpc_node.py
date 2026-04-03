@@ -21,25 +21,38 @@ class Rotary_Cascaded_MPCWrapper(Node):
         # {u, v, w, p, q ,r}
         self.kinematics_r_cost = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
         
-        # {u v w p q r}
-        self.dynamics_q_cost = np.array([1, 1, 1, 1, 1, 1])
-        # {uu uv uw up uq ur}
-        self.dynamics_r_cost = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        
+        
+        self.vel_ref = np.zeros(6, dtype=float)
+        self.sim_v = np.zeros(6, dtype=float)
+
+        self.k_acc_p = np.array([1.5, 1.5, 1.5, 1.0, 1.0, 1.0], dtype=float)
+        self.acc_ref_max = np.array([1.0, 1.0, 1.0, 0.8, 0.8, 0.8], dtype=float)
+
+        self.kp_pi = np.array([0.15, 0.15, 0.15, 0.10, 0.10, 0.10], dtype=float)
+        self.ki_pi = np.array([0.05, 0.05, 0.05, 0.03, 0.03, 0.03], dtype=float)
+
+        self.vel_err_int = np.zeros(6, dtype=float)
+
+        self.vel_err_int_min = np.array([-2.0, -2.0, -2.0, -1.0, -1.0, -1.0], dtype=float)
+        self.vel_err_int_max = np.array([ 2.0,  2.0,  2.0,  1.0,  1.0,  1.0], dtype=float)
+
+        self.dynamics_u = np.zeros(6, dtype=float)
 
 
         self.kinematics_dt = 1/ self.kinematics_control_freq
         self.kinematics_timer = self.create_timer(self.kinematics_dt, self.run_kinematics_MPC)
 
         self.dynamics_dt = 1/ self.dynamics_control_freq
-        self.dynamics_timer = self.create_timer(self.dynamics_dt, self.run_dynamics_MPC)
+        self.dynamics_timer = self.create_timer(self.dynamics_dt, self.run_dynamics_PID)
         
         self.ref_pos = np.zeros((3,))
         self.ref_att = np.array([1.0, 0.0, 0.0, 0.0])
-    
+                    
         self.ros_mpc = ROS_MPC(self.mass, self.inertia, self.add_mass, self.quadratic_damp, self.max_force_moment,   
                                self.max_velocity, self.max_angular_velocity, 
                                self.kinematics_n_nodes, self.kinematics_q_cost, self.kinematics_r_cost, self.kinematics_t_horizon, 
-                               self.dynamics_n_nodes, self.dynamics_q_cost, self.dynamics_r_cost, self.dynamics_t_horizon)
+                               self.k_acc_p, self.acc_ref_max, self.kp_pi, self.ki_pi, self.vel_err_int_min, self.vel_err_int_max, self.dynamics_dt)
         
         self.kinematics_u = np.zeros((6,))
         self.dynamics_u = np.zeros((6,))
@@ -77,16 +90,10 @@ class Rotary_Cascaded_MPCWrapper(Node):
         self.declare_parameter('kinematics_control_freq', 20)
         self.declare_parameter('kinematics_n_nodes', 10)
         self.declare_parameter('kinematics_t_horizon', 0.1)
-        self.declare_parameter('dynamics_control_freq', 100)
-        self.declare_parameter('dynamics_n_nodes', 10)
-        self.declare_parameter('dynamics_t_horizon', 0.1)
         
         self.kinematics_control_freq = self.get_parameter('kinematics_control_freq').value
         self.kinematics_n_nodes = self.get_parameter('kinematics_n_nodes').value
         self.kinematics_t_horizon = self.get_parameter('kinematics_t_horizon').value
-        self.dynamics_control_freq = self.get_parameter('dynamics_control_freq').value
-        self.dynamics_n_nodes = self.get_parameter('dynamics_n_nodes').value
-        self.dynamics_t_horizon = self.get_parameter('dynamics_t_horizon').value
         
         self.get_logger().info(f"Node name is: {self.get_name()}")
         
@@ -102,9 +109,6 @@ class Rotary_Cascaded_MPCWrapper(Node):
             f"  kinematics_control_freq     : {self.kinematics_control_freq}\n"
             f"  kinematics_n_nodes        : {self.kinematics_n_nodes}\n"
             f"  kinematics_t_horizon        : {self.kinematics_t_horizon}\n"
-            f"  dynamics_control_freq          : {self.dynamics_control_freq}\n"
-            f"  dynamics_n_nodes          : {self.dynamics_n_nodes}\n"
-            f"  dynamics_t_horizon        : {self.dynamics_t_horizon}\n"
             "=============================="
             )
     
@@ -138,12 +142,12 @@ class Rotary_Cascaded_MPCWrapper(Node):
 
 
     # dynamics
-    def run_dynamics_MPC(self):
+    def run_dynamics_FF_PI(self):
 
         if self.running:
             # (uu, uv, uw, up, uq, ur)
             u = self.ros_mpc.dynamics_optimize()
-            self.dynamics_u = u
+
             
             control = Wrench()
             control.force = Vector3(x=u[0], y=u[1], z=u[2])

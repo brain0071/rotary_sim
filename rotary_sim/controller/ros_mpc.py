@@ -5,15 +5,12 @@ from rotary_sim.controller.robot import ROBOT
 class ROS_MPC:
 
     def __init__(self, mass, inertia, add_mass, quadratic_damp, max_force_moment, max_velocity, max_angular_velocity, 
-                 kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, dynamics_n_nodes, dynamics_q_cost, 
-                 dynamics_r_cost, dynamics_t_horizon):
+                 kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon,
+                 k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int_min, vel_err_int_max, dynamics_dt):
        
         self.robot = ROBOT(mass, inertia, add_mass, quadratic_damp, max_force_moment, max_velocity, max_angular_velocity)
+        self.mpc = MPC(self.robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, k_acc_p, acc_ref_max, kp_pi, ki_pi, vel_err_int_min, vel_err_int_max, dynamics_dt)
         
-        self.mpc = MPC(self.robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, dynamics_n_nodes, 
-                       dynamics_q_cost, dynamics_r_cost, dynamics_t_horizon)
-        
-   
 
     # kinematics
     def set_kinematics_reference(self, x_ref):
@@ -32,6 +29,7 @@ class ROS_MPC:
     
     # dynamics
     def set_dynamics_reference(self, x_ref):
+        
         return self.mpc.set_dynamics_reference(x_ref)
     
     def dynamics_optimize(self):
