@@ -16,12 +16,13 @@ class ROBOT:
         self.max_angular_velocity = max_angular_velocity
 
         self.sim_pos = np.zeros((3,))
-        self.sim_att = np.array([1.0, 0.0, 0.0, 0.0])  
+        self.sim_att = np.array([1.0, 0.0, 0.0, 0.0])
+        self.sim_att_ = np.array([1.0, 0.0, 0.0, 0.0])  
         self.sim_vel = np.zeros((3,))
         self.sim_rate = np.zeros((3,))
     
     def get_sim_kinematics_state(self):
-        x_sim = np.concatenate((self.sim_pos, self.sim_att))
+        x_sim = np.concatenate((self.sim_pos, self.sim_att_))
         return x_sim
     
     def get_sim_dynamics_state(self):
@@ -29,7 +30,8 @@ class ROBOT:
         return x_sim
 
     def p_kinematics(self, x, velocity):
-        return np.dot(q_to_rot_mat(x[3:7]), velocity)
+        # return np.dot(q_to_rot_mat(x[3:7]), velocity)
+        return np.dot(q_to_rot_mat(self.sim_att_), velocity)
 
     def q_kinematics(self, x, angular):
         return 1 / 2 * np.dot(skew_symmetric(angular), x[3:7])

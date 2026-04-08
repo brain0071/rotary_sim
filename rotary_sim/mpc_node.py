@@ -19,18 +19,18 @@ class Rotary_Cascaded_MPCWrapper(Node):
         # {x, y, z, qw, qx, qy, qz}
         self.kinematics_q_cost = np.array([1, 1, 1, 1, 0.5, 0.5, 0.5])
         # {u, v, w, p, q ,r}
-        self.kinematics_r_cost = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        self.kinematics_r_cost = np.array([0.5, 0.5, 0.5, 0.3, 0.3, 0.3])
         
         
         
         self.vel_ref = np.zeros(6, dtype=float)
         self.sim_v = np.zeros(6, dtype=float)
 
-        self.k_acc_p = np.array([0.64, 1.02, 1.02, 10.7, 3.13, 6.94], dtype=float)
+        self.k_acc_p = np.array([0.45, 0.80, 0.80, 5.7, 2.13, 3.94], dtype=float)
         self.acc_ref_max = np.array([2.55, 1.53, 1.53, 32.14, 12.53, 13.88], dtype=float)
-
-        self.kp_pi = np.array([0.08, 0.08, 0.08, 0.05, 0.05, 0.05], dtype=float)
-        self.ki_pi = np.array([0.02, 0.02, 0.02, 0.015, 0.015, 0.015], dtype=float)
+    
+        self.kp_pi = np.array([0.22, 0.22, 0.22, 0.05, 0.05, 0.05], dtype=float)
+        self.ki_pi = np.array([0.001, 0.001, 0.001, 0.015, 0.015, 0.015], dtype=float)
         
         self.vel_err_int = np.zeros(6, dtype=float)
         self.vel_err_int_min = np.array([-1.0, -1.0, -1.0, -0.5, -0.5, -0.5], dtype=float)
@@ -127,10 +127,10 @@ class Rotary_Cascaded_MPCWrapper(Node):
         if self.running:
             # (u, v, w, p, q, r)
             u = self.ros_mpc.kinematics_optimize()
-            self.kinematics_u = u
+            self.kinematics_u = u 
 
             control = Wrench()
-            control.force = Vector3(x=u[0], y=u[1], z=u[2])
+            control.force = Vector3(x=u[0] * self.max_velocity, y=u[1] * self.max_velocity, z=u[2] * self.max_velocity)
             control.torque = Vector3(x=u[3], y=u[4], z=u[5])
             self.control_kinematics.publish(control)
         
