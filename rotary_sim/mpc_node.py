@@ -6,6 +6,7 @@ import numpy as np
 from rotary_sim.controller.ros_mpc import ROS_MPC
 from geometry_msgs.msg import Wrench, Vector3, TwistStamped
 from nav_msgs.msg import Odometry
+import math
 
 class Rotary_Cascaded_MPCWrapper(Node):
     
@@ -64,6 +65,8 @@ class Rotary_Cascaded_MPCWrapper(Node):
         self.control_kinematics = self.create_publisher(Wrench, "/u_kinematics", 10)
         self.control_dynamics = self.create_publisher(Wrench, "/u_dynamics", 10)
         self.create_service(SetBool, "stop_signal", self.stop_callback)
+        
+        self.time = 0
     
     def load_params(self):
         
@@ -124,6 +127,8 @@ class Rotary_Cascaded_MPCWrapper(Node):
     
     def run_kinematics_MPC(self):
         
+        
+        
         if self.running:
             # (u, v, w, p, q, r)
             u = self.ros_mpc.kinematics_optimize()
@@ -146,11 +151,18 @@ class Rotary_Cascaded_MPCWrapper(Node):
 
     # dynamics
     def run_dynamics_FF_PI(self):
-
+        
+        # diturbance 
+        self.time = self.time + (1 / self.dynamics_control_freq)
+        deg = 2 * math.pi / 30 * self.time
+        x_d, y_d = 0.3 * math.cos(deg), 0.3 * math.sin(deg)
+        
         if self.running:
             # (uu, uv, uw, up, uq, ur)
             u = self.ros_mpc.dynamics_optimize() 
             self.dynamics_u = u
+            self.dynamics_u[0] += x_d
+            self.dynamics_u[1] += y_d
             
             control = Wrench()
             control.force = Vector3(x=u[0], y=u[1], z=u[2])
