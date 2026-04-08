@@ -123,7 +123,7 @@ class Rotary_Cascaded_MPCWrapper(Node):
             self.kinematics_u = u
 
             control = Wrench()
-            control.force = Vector3(x=u[0], y=u[1], z=u[2])
+            control.force = Vector3(x=u[0] * self.max_velocity, y=u[1] * self.max_velocity, z=u[2] * self.max_velocity)
             control.torque = Vector3(x=u[3], y=u[4], z=u[5])
             self.control_kinematics.publish(control)
         
