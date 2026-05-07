@@ -186,8 +186,8 @@ class Rotary_Cascaded_MPCWrapper(Node):
             # (uu, uv, uw, up, uq, ur)
             u = self.ros_mpc.dynamics_optimize() 
             self.dynamics_u = u
-            # self.dynamics_u[0] += x_d
-            # self.dynamics_u[1] += y_d
+            self.dynamics_u[0] += x_d
+            self.dynamics_u[1] += y_d
             
             control = Wrench()
             control.force = Vector3(x=u[0], y=u[1], z=u[2])
