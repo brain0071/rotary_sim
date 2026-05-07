@@ -49,7 +49,26 @@ class ROBOT:
         x_aux = [x[i] + dt / 2 * k3[i] for i in range(7)]
         k4 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
         x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(7)]
+        
+        # k1 = np.concatenate((self.p_kinematics(x, kinematics_opt_u[0:3]), self.q_kinematics(x, kinematics_opt_u[3:6])))
 
+        # # k2 = f(x_k + dt/2 * k1, u_k)
+        # x_aux = x + dt / 2.0 * k1
+        # k2 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
+
+        # # k3 = f(x_k + dt/2 * k2, u_k)
+        # x_aux = x + dt / 2.0 * k2
+        # k3 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
+
+        # # k4 = f(x_k + dt * k3, u_k)
+    
+        # x_aux = x + dt * k3
+        # k4 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
+
+        # # x_{k+1}
+        # x_next = x + dt * (k1 / 6.0 + k2 / 3.0 + k3 / 3.0 + k4 / 6.0)
+        
+        
         self.sim_pos = x[0:3]
         self.sim_att = x[3:7]
         
@@ -83,6 +102,24 @@ class ROBOT:
         x_aux = [x[i] + dt / 2 * k3[i] for i in range(6)]
         k4 = np.concatenate((self.v_dynamics(x_aux, dynamics_opt_u[0:3]), self.r_dynamics(x_aux, dynamics_opt_u[3:6])))
         x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(6)]
+        
+        # k1 = np.concatenate((self.v_dynamics(x, dynamics_opt_u[0:3]), self.r_dynamics(x, dynamics_opt_u[3:6])))
+
+        # # k2 = f(x_k + dt/2 * k1, u_k)
+        # x_aux = x + dt / 2.0 * k1
+        # k2 = np.concatenate((self.v_dynamics(x_aux, dynamics_opt_u[0:3]), self.r_dynamics(x_aux, dynamics_opt_u[3:6])))
+
+        # # k3 = f(x_k + dt/2 * k2, u_k)
+        # x_aux = x + dt / 2.0 * k2
+        # k3 = np.concatenate((self.v_dynamics(x_aux, dynamics_opt_u[0:3]), self.r_dynamics(x_aux, dynamics_opt_u[3:6])))
+
+        # # k4 = f(x_k + dt * k3, u_k)
+    
+        # x_aux = x + dt * k3
+        # k4 = np.concatenate((self.v_dynamics(x_aux, dynamics_opt_u[0:3]), self.r_dynamics(x_aux, dynamics_opt_u[3:6])))
+
+        # # x_{k+1}
+        # x_next = x + dt * (k1 / 6.0 + k2 / 3.0 + k3 / 3.0 + k4 / 6.0)
 
         self.sim_vel = x[0:3]
         self.sim_rate = x[3:6]

@@ -15,10 +15,10 @@ mpc_node:
     # MPC
     kinematics_control_freq: 20
     kinematics_n_nodes: 10
-    kinematics_t_horizon: 0.1
+    kinematics_t_horizon: 0.5
 
 
     dynamics_control_freq: 100
     dynamics_n_nodes: 10
-    dynamics_t_horizon: 0.1
+    dynamics_t_horizon: 0.5
    

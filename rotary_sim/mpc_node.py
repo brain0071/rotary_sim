@@ -25,7 +25,7 @@ class Rotary_Cascaded_MPCWrapper(Node):
         # {u v w p q r}
         self.dynamics_q_cost = np.array([1, 1, 1, 1, 1, 1])
         # {uu uv uw up uq ur}
-        self.dynamics_r_cost = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
+        self.dynamics_r_cost = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
 
 
         self.kinematics_dt = 1/ self.kinematics_control_freq
@@ -125,13 +125,16 @@ class Rotary_Cascaded_MPCWrapper(Node):
             # (u, v, w, p, q, r)
             u = self.ros_mpc.kinematics_optimize()
             self.kinematics_u = u
-
+            
+         
             control = Wrench()
             control.force = Vector3(x=u[0] * self.max_velocity, y=u[1] * self.max_velocity, z=u[2] * self.max_velocity)
             control.torque = Vector3(x=u[3], y=u[4], z=u[5])
             self.control_kinematics.publish(control)
         
             self.ros_mpc.set_dynamics_reference(self.kinematics_u)   
+           
+            
             self.ros_mpc.kinematics_simulate(self.kinematics_dt, self.sim_v)
             
             sim_cur_state = self.ros_mpc.get_kinematics_sim_state()
