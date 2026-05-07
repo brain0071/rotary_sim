@@ -30,12 +30,30 @@ class Rotary_Cascaded_MPCWrapper(Node):
         self.k_acc_p = np.array([0.45, 0.80, 0.80, 5.7, 2.13, 3.94], dtype=float)
         self.acc_ref_max = np.array([2.55, 1.53, 1.53, 32.14, 12.53, 13.88], dtype=float)
     
-        self.kp_pi = np.array([0.22, 0.22, 0.22, 0.05, 0.05, 0.05], dtype=float)
-        self.ki_pi = np.array([0.001, 0.001, 0.001, 0.015, 0.015, 0.015], dtype=float)
         
+        
+        
+        # PID gains for velocity-loop feedback
+        self.kp_pid = np.array([0.22, 0.22, 0.22, 0.05, 0.05, 0.05], dtype=float)
+        self.ki_pid = np.array([0.001, 0.001, 0.001, 0.015, 0.015, 0.015], dtype=float)
+
+        # D gains: 建议先从较小值开始
+        self.kd_pid = np.array([0.02, 0.02, 0.02, 0.005, 0.005, 0.005], dtype=float)
+
+        # Integral term
         self.vel_err_int = np.zeros(6, dtype=float)
         self.vel_err_int_min = np.array([-1.0, -1.0, -1.0, -0.5, -0.5, -0.5], dtype=float)
         self.vel_err_int_max = np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5], dtype=float)
+
+        # Derivative term
+        self.vel_err_prev = np.zeros(6, dtype=float)
+        self.vel_err_dot = np.zeros(6, dtype=float)
+
+        # derivative low-pass filter coefficient
+        # 0 表示完全不用新微分，1 表示完全使用原始微分
+        self.d_filter_alpha = 0.2
+        
+        
 
         self.dynamics_u = np.zeros(6, dtype=float)
 
@@ -49,10 +67,17 @@ class Rotary_Cascaded_MPCWrapper(Node):
         self.ref_pos = np.zeros((3,))
         self.ref_att = np.array([1.0, 0.0, 0.0, 0.0])
                     
-        self.ros_mpc = ROS_MPC(self.mass, self.inertia, self.add_mass, self.quadratic_damp, self.max_force_moment,   
+        self.ros_mpc = ROS_MPC(self.mass, self.inertia, self.add_mass, 
+                               self.quadratic_damp, self.max_force_moment,   
                                self.max_velocity, self.max_angular_velocity, 
-                               self.kinematics_n_nodes, self.kinematics_q_cost, self.kinematics_r_cost, self.kinematics_t_horizon, 
-                               self.k_acc_p, self.acc_ref_max, self.kp_pi, self.ki_pi, self.vel_err_int, self.vel_err_int_min, self.vel_err_int_max, self.dynamics_dt)
+                               self.kinematics_n_nodes, self.kinematics_q_cost, 
+                               self.kinematics_r_cost, self.kinematics_t_horizon, 
+                               self.k_acc_p, self.acc_ref_max, 
+                               self.kp_pid, self.ki_pid, self.kd_pid, 
+                               self.vel_err_prev, 
+                               self.vel_err_dot, self.d_filter_alpha, 
+                               self.vel_err_int, self.vel_err_int_min, 
+                               self.vel_err_int_max, self.dynamics_dt)
         
         self.kinematics_u = np.zeros((6,))
         self.dynamics_u = np.zeros((6,))
@@ -161,8 +186,8 @@ class Rotary_Cascaded_MPCWrapper(Node):
             # (uu, uv, uw, up, uq, ur)
             u = self.ros_mpc.dynamics_optimize() 
             self.dynamics_u = u
-            self.dynamics_u[0] += x_d
-            self.dynamics_u[1] += y_d
+            # self.dynamics_u[0] += x_d
+            # self.dynamics_u[1] += y_d
             
             control = Wrench()
             control.force = Vector3(x=u[0], y=u[1], z=u[2])
