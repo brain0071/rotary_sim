@@ -29,64 +29,60 @@ class ROBOT:
         x_sim = np.concatenate((self.sim_vel, self.sim_rate))
         return x_sim
 
-    def p_kinematics(self, x, velocity):
-        # return np.dot(q_to_rot_mat(x[3:7]), velocity)
-        return np.dot(q_to_rot_mat(self.sim_att_), velocity)
+    # def p_kinematics(self, x, velocity):
+    
+    #     return np.dot(q_to_rot_mat(self.sim_att_), velocity)
 
-    def q_kinematics(self, x, angular):
-        return 1 / 2 * np.dot(skew_symmetric(angular), x[3:7])
+    # def q_kinematics(self, x, angular):
+    #     return 1 / 2 * np.dot(skew_symmetric(angular), x[3:7])
+    
+    
+    def p_kinematics(self, x):
+    
+        return np.dot(q_to_rot_mat(x[3:7]), x[7:10])
+
+    def q_kinematics(self, x):
+        return 1 / 2 * np.dot(skew_symmetric(x[10:13]), x[3:7])
+    
 
     def kinematics_update(self, dt, kinematics_opt_u):
         
         # x y z qw qx qy qz
-        x = self.get_sim_kinematics_state()
+        x_1 = self.get_sim_kinematics_state()
+        x_2 = self.get_sim_dynamics_state()
+        x = np.concatenate((x_1, x_2))
         
-        k1 = np.concatenate((self.p_kinematics(x, kinematics_opt_u[0:3]), self.q_kinematics(x, kinematics_opt_u[3:6])))
-        x_aux = [x[i] + dt / 2 * k1[i] for i in range(7)]
-        k2 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
-        x_aux = [x[i] + dt / 2 * k2[i] for i in range(7)]
+        k1 = np.concatenate((self.p_kinematics(x), self.q_kinematics(x), kinematics_opt_u))
 
-        k3 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
-        x_aux = [x[i] + dt / 2 * k3[i] for i in range(7)]
-        k4 = np.concatenate((self.p_kinematics(x_aux, kinematics_opt_u[0:3]), self.q_kinematics(x_aux, kinematics_opt_u[3:6])))
-        x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(7)]
+        x_aux = [x[i] + dt / 2 * k1[i] for i in range(13)]
+        
+        k2 = np.concatenate((self.p_kinematics(x_aux), self.q_kinematics(x_aux), kinematics_opt_u))
+        
+        x_aux = [x[i] + dt / 2 * k2[i] for i in range(13)]
+        k3 = np.concatenate((self.p_kinematics(x_aux), self.q_kinematics(x_aux), kinematics_opt_u))
+        
+        x_aux = [x[i] + dt / 2 * k3[i] for i in range(13)]
+        k4 = np.concatenate((self.p_kinematics(x_aux), self.q_kinematics(x_aux), kinematics_opt_u))
 
+        x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(13)]
+        
         self.sim_pos = x[0:3]
+        self.sim_vel = x[7:10]
         self.sim_att = x[3:7]
+        self.sim_rate = x[10:13]
+ 
         
+    def update_indi(self, u):
         
-
-    def v_dynamics(self, x, u):
+        dot_u = (u[0] * self.max_force_moment[0] - (self.quadratic_damp[0] * np.abs(self.sim_vel[0]) * self.sim_vel[0])) / (self.mass[0] + self.add_mass[0])
+        dot_v = (u[1] * self.max_force_moment[1] - (self.quadratic_damp[1] * np.abs(self.sim_vel[1]) * self.sim_vel[1])) / (self.mass[0] + self.add_mass[1])
+        dot_w = (u[2] * self.max_force_moment[2] - (self.quadratic_damp[2] * np.abs(self.sim_vel[2]) * self.sim_vel[2])) / (self.mass[0] + self.add_mass[2])
         
-        du = (u[0] * self.max_force_moment[0] - (self.quadratic_damp[0] * np.abs(x[0]) * x[0])) / (self.mass[0] + self.add_mass[0])
-        dv = (u[1] * self.max_force_moment[1] - (self.quadratic_damp[1] * np.abs(x[1]) * x[1])) / (self.mass[0] + self.add_mass[1])
-        dw = (u[2] * self.max_force_moment[2] - (self.quadratic_damp[2] * np.abs(x[2]) * x[2])) / (self.mass[0] + self.add_mass[2])
+        dot_p = (u[3] * self.max_force_moment[3] - (self.quadratic_damp[3] * np.abs(self.sim_rate[0]) * self.sim_rate[0])) / (self.inertia[0] + self.add_mass[3])
+        dot_q = (u[4] * self.max_force_moment[4] - (self.quadratic_damp[4] * np.abs(self.sim_rate[1]) * self.sim_rate[1])) / (self.inertia[1] + self.add_mass[4])
+        dot_r = (u[5] * self.max_force_moment[5] - (self.quadratic_damp[5] * np.abs(self.sim_rate[2]) * self.sim_rate[2])) / (self.inertia[2] + self.add_mass[5])
         
-        return np.array([du, dv, dw])
-
-    def r_dynamics(self, x, u):
-        dp = (u[0] * self.max_force_moment[3] - (self.quadratic_damp[3] * np.abs(x[3]) * x[3])) / (self.inertia[0] + self.add_mass[3])
-        dq = (u[1] * self.max_force_moment[4] - (self.quadratic_damp[4] * np.abs(x[4]) * x[4])) / (self.inertia[1] + self.add_mass[4])
-        dr = (u[2] * self.max_force_moment[5] - (self.quadratic_damp[5] * np.abs(x[5]) * x[5])) / (self.inertia[2] + self.add_mass[5])
-        return np.array([dp, dq, dr])
-
-        
-    def dynamics_update(self, dt, dynamics_opt_u):
-        
-        x = self.get_sim_dynamics_state()
-        
-        k1 = np.concatenate((self.v_dynamics(x, dynamics_opt_u[0:3]), self.r_dynamics(x, dynamics_opt_u[3:6])))
-        x_aux = [x[i] + dt / 2 * k1[i] for i in range(6)]
-        k2 = np.concatenate((self.v_dynamics(x_aux, dynamics_opt_u[0:3]), self.r_dynamics(x_aux, dynamics_opt_u[3:6])))
-        x_aux = [x[i] + dt / 2 * k2[i] for i in range(6)]
-
-        k3 = np.concatenate((self.v_dynamics(x_aux, dynamics_opt_u[0:3]), self.r_dynamics(x_aux, dynamics_opt_u[3:6])))
-        x_aux = [x[i] + dt / 2 * k3[i] for i in range(6)]
-        k4 = np.concatenate((self.v_dynamics(x_aux, dynamics_opt_u[0:3]), self.r_dynamics(x_aux, dynamics_opt_u[3:6])))
-        x = [x[i] + dt * (1.0 / 6.0 * k1[i] + 2.0 / 6.0 * k2[i] + 2.0 / 6.0 * k3[i] + 1.0 / 6.0 * k4[i]) for i in range(6)]
-
-        self.sim_vel = x[0:3]
-        self.sim_rate = x[3:6]
+        return np.array([dot_u, dot_v, dot_w, dot_p, dot_q, dot_r])
         
         
         

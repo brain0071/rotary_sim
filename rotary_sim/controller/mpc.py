@@ -5,11 +5,11 @@ from rotary_sim.controller.dynamics_optimizer import FF_PI_Dynamics
 class MPC:
     
     def __init__(self, robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon, 
-                 k_acc_p, acc_ref_max, kp_pid, ki_pid, kd_pid, vel_err_prev, vel_err_dot, d_filter_alpha, vel_err_int, vel_err_int_min, vel_err_int_max, dynamics_dt):
+                 k_acc_p, acc_ref_max, dynamics_dt):
         
         self.robot = robot
         self.kinematics_opt = MPC_Kinematics_Optimizer(robot, kinematics_n_nodes, kinematics_q_cost, kinematics_r_cost, kinematics_t_horizon)
-        self.dynamics_opt = FF_PI_Dynamics(robot, k_acc_p, acc_ref_max, kp_pid, ki_pid, kd_pid, vel_err_prev, vel_err_dot, d_filter_alpha, vel_err_int, vel_err_int_min, vel_err_int_max, dynamics_dt)
+        self.dynamics_opt = FF_PI_Dynamics(robot, k_acc_p, acc_ref_max, dynamics_dt)
             
             
     def get_sim_kinematics_state(self):
@@ -36,10 +36,13 @@ class MPC:
         max_vel = np.array(self.robot.max_velocity)
         return self.dynamics_opt.set_reference_state(ref * max_vel)
        
-    def dynamics_optimize(self):   
+    def dynamics_optimize(self, last_u, sim_a):   
         robot_dynamics_state = self.get_sim_dynamics_state()
-        out = self.dynamics_opt.run_optimize(robot_dynamics_state)
+        out = self.dynamics_opt.run_optimize(robot_dynamics_state, last_u, sim_a)
         return out
     
     def dynamics_simulate(self, dynamics_dt, dynamics_opt_u):
         self.robot.dynamics_update(dynamics_dt, dynamics_opt_u)
+        
+    def simulate_indi(self, u):
+        return self.robot.update_indi(u)

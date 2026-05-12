@@ -20,43 +20,22 @@ class Rotary_Cascaded_MPCWrapper(Node):
         # {x, y, z, qw, qx, qy, qz}
         self.kinematics_q_cost = np.array([1, 1, 1, 1, 0.5, 0.5, 0.5])
         # {u, v, w, p, q ,r}
-        self.kinematics_r_cost = np.array([0.5, 0.5, 0.5, 0.3, 0.3, 0.3])
+        self.kinematics_r_cost = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
         
         
         
         self.vel_ref = np.zeros(6, dtype=float)
         self.sim_v = np.zeros(6, dtype=float)
-
+        
+        # self.sim_a 
         self.k_acc_p = np.array([0.45, 0.80, 0.80, 5.7, 2.13, 3.94], dtype=float)
         self.acc_ref_max = np.array([2.55, 1.53, 1.53, 32.14, 12.53, 13.88], dtype=float)
-    
         
-        
-        
-        # PID gains for velocity-loop feedback
-        self.kp_pid = np.array([0.22, 0.22, 0.22, 0.05, 0.05, 0.05], dtype=float)
-        self.ki_pid = np.array([0.001, 0.001, 0.001, 0.015, 0.015, 0.015], dtype=float)
-
-        # D gains: 建议先从较小值开始
-        self.kd_pid = np.array([0.02, 0.02, 0.02, 0.005, 0.005, 0.005], dtype=float)
-
-        # Integral term
-        self.vel_err_int = np.zeros(6, dtype=float)
-        self.vel_err_int_min = np.array([-1.0, -1.0, -1.0, -0.5, -0.5, -0.5], dtype=float)
-        self.vel_err_int_max = np.array([1.0, 1.0, 1.0, 0.5, 0.5, 0.5], dtype=float)
-
-        # Derivative term
-        self.vel_err_prev = np.zeros(6, dtype=float)
-        self.vel_err_dot = np.zeros(6, dtype=float)
-
-        # derivative low-pass filter coefficient
-        # 0 表示完全不用新微分，1 表示完全使用原始微分
-        self.d_filter_alpha = 0.2
-        
-        
-
         self.dynamics_u = np.zeros(6, dtype=float)
-
+        
+        # 
+        self.last_u = np.zeros(6, dtype=float)
+        self.sim_a = np.zeros(6, dtype=float)
 
         self.kinematics_dt = 1/ self.kinematics_control_freq
         self.kinematics_timer = self.create_timer(self.kinematics_dt, self.run_kinematics_MPC)
@@ -72,12 +51,7 @@ class Rotary_Cascaded_MPCWrapper(Node):
                                self.max_velocity, self.max_angular_velocity, 
                                self.kinematics_n_nodes, self.kinematics_q_cost, 
                                self.kinematics_r_cost, self.kinematics_t_horizon, 
-                               self.k_acc_p, self.acc_ref_max, 
-                               self.kp_pid, self.ki_pid, self.kd_pid, 
-                               self.vel_err_prev, 
-                               self.vel_err_dot, self.d_filter_alpha, 
-                               self.vel_err_int, self.vel_err_int_min, 
-                               self.vel_err_int_max, self.dynamics_dt)
+                               self.k_acc_p, self.acc_ref_max, self.dynamics_dt)
         
         self.kinematics_u = np.zeros((6,))
         self.dynamics_u = np.zeros((6,))
@@ -163,9 +137,21 @@ class Rotary_Cascaded_MPCWrapper(Node):
             control.force = Vector3(x=u[0] * self.max_velocity, y=u[1] * self.max_velocity, z=u[2] * self.max_velocity)
             control.torque = Vector3(x=u[3], y=u[4], z=u[5])
             self.control_kinematics.publish(control)
-        
+            
+            
             self.ros_mpc.set_dynamics_reference(self.kinematics_u)   
-            self.ros_mpc.kinematics_simulate(self.kinematics_dt, self.sim_v)
+            # self.ros_mpc.kinematics_simulate(self.kinematics_dt, self.sim_v)
+            
+            self.ros_mpc.kinematics_simulate(self.kinematics_dt, self.sim_a)
+            
+            
+            sim_cur_state = self.ros_mpc.get_dynamics_sim_state()
+            self.sim_v = sim_cur_state
+            velocity_msg = TwistStamped()
+            velocity_msg.header.stamp = self.get_clock().now().to_msg()  
+            velocity_msg.twist.linear = Vector3(x=self.sim_v[0], y=self.sim_v[1], z=self.sim_v[2])
+            velocity_msg.twist.angular = Vector3(x=self.sim_v[3], y=self.sim_v[4], z=self.sim_v[5])
+            self.vel_sim_pub.publish(velocity_msg)
             
             sim_cur_state = self.ros_mpc.get_kinematics_sim_state()
             sim_cur_p = PoseStamped()
@@ -184,7 +170,10 @@ class Rotary_Cascaded_MPCWrapper(Node):
         
         if self.running:
             # (uu, uv, uw, up, uq, ur)
-            u = self.ros_mpc.dynamics_optimize() 
+            u = self.ros_mpc.dynamics_optimize(self.last_u, self.sim_a) 
+
+            self.last_u = u
+
             self.dynamics_u = u
             self.dynamics_u[0] += x_d
             self.dynamics_u[1] += y_d
@@ -193,17 +182,10 @@ class Rotary_Cascaded_MPCWrapper(Node):
             control.force = Vector3(x=u[0], y=u[1], z=u[2])
             control.torque = Vector3(x=u[3], y=u[4], z=u[5])
             self.control_dynamics.publish(control)
-
-            self.ros_mpc.dynamics_simulate(self.dynamics_dt, self.dynamics_u)
-            sim_cur_state = self.ros_mpc.get_dynamics_sim_state()
-        
-            self.sim_v = sim_cur_state
             
-            velocity_msg = TwistStamped()
-            velocity_msg.header.stamp = self.get_clock().now().to_msg()  
-            velocity_msg.twist.linear = Vector3(x=self.sim_v[0], y=self.sim_v[1], z=self.sim_v[2])
-            velocity_msg.twist.angular = Vector3(x=self.sim_v[3], y=self.sim_v[4], z=self.sim_v[5])
-            self.vel_sim_pub.publish(velocity_msg)
+            # 
+            self.sim_a = self.ros_mpc.simulate_indi(self.dynamics_u)     
+           
 
     def stop_callback(self, request, response):
         if request.data == True:
